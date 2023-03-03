@@ -6,18 +6,14 @@
 <script setup lang="ts">
 import initAppStream from "../lib/appstream_embed";
 
+// This component is meant to be the placeholder for the appstream frame. This component, when startAppStream is called,
+// calls into the AWS-provided appstream_embed.js to set up the actual streaming surface.
+// In this example, security issues will prevent it from connecting properly, at the moment.
+
 async function startAppStream(streamUrl: string, serverhostname: string) 
 {
-	const contenthostName = `content.${serverhostname}`;
-
-	//isLoading.value = false;
-	//isStreaming.value = true;
-	//await Task.Yield();
-
 	initAppStream();
-	//await Task.Yield();
 
-	//const customStreamUrl = streamUrl.replace(/\/\/appstream2\..+?\.aws\.amazon\.com\//, `//${contenthostName}/`);
 	const customStreamUrl = streamUrl;
 
 	const AppStream = window.AppStream;
@@ -34,10 +30,9 @@ async function startAppStream(streamUrl: string, serverhostname: string)
 	console.info("Starting AppStream with the following options:", appStreamOptions);
 
 	new AppStream.Embed("appstream-container", appStreamOptions);
-
-	//isStreaming.value = true;
 }
 
+// expose this function to outside callers.
 defineExpose({startAppStream});
 
 </script>

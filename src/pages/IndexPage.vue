@@ -88,6 +88,7 @@ import { ref, getCurrentInstance } from 'vue';
 import { useQuasar } from 'quasar'
 import * as C from '@cavrnus/lib';
 import streamframe from '../components/streamframe.vue'
+import { sortRoomsByLastAccessDateAndHideHiddens } from '../lib/helpers';
 
 const $q = useQuasar();
 $q.dark.set(true);
@@ -137,24 +138,8 @@ async function login()
 		// or simplify have hardcoded the room id.
 		var roomssrc = await C.Api.roomGetParticipating(api);
 
-		// Filter out archived/hidden rooms, sort by access date. This is of course optional and just part of this example UI.
-		var roomsvisible = roomssrc.filter(r=>(C.Api.roomGetMyMembershipInfo(r, username.value)?.hidden ?? false) === false);
-		rooms.value = roomsvisible.sort((a,b)=>
-		{
-			const membershipA = C.Api.roomGetMyMembershipInfo(a, username.value);
-			const membershipB = C.Api.roomGetMyMembershipInfo(b, username.value);
-			if (membershipA?.lastAccess == undefined)
-			{
-				if (membershipB?.lastAccess == undefined)
-					return 0;
-				else
-					return -1;
-			}
-			else if (membershipB?.lastAccess == undefined)
-				return 1;
-			else
-				return membershipA?.lastAccess > membershipB?.lastAccess ? -1 : 1;
-		});
+		var roomssorted = sortRoomsByLastAccessDateAndHideHiddens(roomssrc, username.value);
+		rooms.value = roomssorted;
 
 		// Proceed to next step in the UI wizard.
 		step.value = 1;
@@ -175,11 +160,14 @@ async function selectRoom(joinroom: C.Api.Room)
 		if (api === undefined)
 			throw new Error(`API is not set`);
 
-		// Begin a local connection to the room, for communication with the remote stream.
+		// Begin an in-browser persistent connection to the room, for communication with the remote stream.
 		conn = await C.Conn.connectSession(api, joinroom._id);
 
+		// For illustration purposes, we pull out the list of active users in the selected room and populate a ui list with them. If users join or leave after the fact, this list will update itself.
+		// The 'mapintoarray' call yields an object which can be used to stop this mapping.
 		usershook = C.V.mapintoarray(conn.users.users, users.value, (u1, u2)=>u1.connectionId > u2.connectionId ? 1 : -1);
 
+		// Now that we're connected, set up the property field bindings.
 		hookPropertyValue();
 
 		step.value = 2;
@@ -196,6 +184,12 @@ async function beginStreaming()
 		return;
 	if (streamclientActive.value)
 		return;
+
+	// This method requests a streaming client from the Cavrnus server, waits and retries if it must wait in a queue,
+	// then when complete, calls into a sub-component (StreamFrame) to connect to the stream.
+	// This method currently has security limitations and will not work in this test until
+	// some AWS security settings have been changed.
+	// In short, this method is illustrative but likely to change.
 
 	streamclientActive.value = true;
 
@@ -225,7 +219,7 @@ async function beginStreaming()
 		console.log("Streamclient - pending. Initting app stream frame.");
 
 		const sfi = streamframeinst.value;
-		sfi?.startAppStream(streamres.streamUrl, domain.value);
+		sfi?.startAppStream(streamres.streamUrl!, domain.value);
 	}
 }
 
@@ -242,7 +236,7 @@ function hookPropertyValue()
 
 	console.log(`Declaring and hooking prop: ${propertyName.value}...`);
 
-	// We're going to declare the property in the room journal to make it visible to other client UIs here. This is optional
+	// We're going to declare the property in the room journal to make it visible to other client UIs. This is entirely optional.
 	conn.sendOp({declareProperty:{
 		v1:{
 			propId: {id: propertyName.value},
@@ -262,6 +256,10 @@ function hookPropertyValue()
 		}
 	}});
 
+	// And here we bind the value of the property to the component field 'livePropertyValue'.
+	// Get the property by type and name, then bind it to a function which assigns the livePropertyValue.value.
+	// And lastly retain the hook so we can cancel this mapping later, either when shutting down or changing properties to watch.
+
 	propertyHook = C.V.bind(conn.journal.properties.searchForStringProperty(propertyName.value).current,
 		(v)=>livePropertyValue.value = v);
 }
@@ -270,6 +268,9 @@ function writePropertyValue(setTo : string) : void
 {
 	if (conn === undefined)
 		return;
+
+	// Communications to the Cavrnus server take the form of operations; commands sent to the journal and broadcast to live users.
+	// In this case we're building an 'updateProperytValue' operation.
 
 	conn.sendOp({
 		updatePropertyValue: {
