@@ -8,9 +8,9 @@
   integrity sha512-URpaIJQwEkEC2T9Kn+Ai6Xe/02iNaVCuT/PtoRz3GPVJVDpPd7mLo+VddTbhCRU9TXqW5mSrQfXZyi8kDKOVpQ==
 
 "@cavrnus/lib@^0.3.12":
-  version "0.3.18"
-  resolved "https://registry.yarnpkg.com/@cavrnus/lib/-/lib-0.3.18.tgz#5b94be9e68cc679d3cd703c781fdcb9e1ea794a5"
-  integrity sha512-WZCDUl0rzd8rH1UIi4VCkBj06ORWFWlWjCwxEIEIVRyNvtamRJyu5/R2w7uq+0PjZSt2f7lOLzcSIC1aqMi7EQ==
+  version "0.3.21"
+  resolved "https://registry.yarnpkg.com/@cavrnus/lib/-/lib-0.3.21.tgz#47067c6f4d8185432b2aa849a038fd741aaa725c"
+  integrity sha512-mwb/LAApz+RInnquw0EOGcuEEdM7z/DH4eX0afcnJghKVW5yJq0/DefgRs3YiOa6bDXN9TmeXtXCzzm6jnefPA==
   dependencies:
     axios "^0.25.0"
     evp_bytestokey "^1.0.3"
@@ -254,10 +254,15 @@
   resolved "https://registry.yarnpkg.com/@types/mime/-/mime-3.0.1.tgz#5f8f2bca0a5863cb69bc0b0acd88c96cb1d4ae10"
   integrity sha512-Y4XFY5VJAuw0FgAqPNd6NNoV44jbq9Bz2L7Rh/J6jLTiHBSBJa9fxqQIvkIld4GsoDOcCbvzOUAbLPsSKKg+uA==
 
-"@types/node@*", "@types/node@>=13.7.0":
+"@types/node@*":
   version "18.14.2"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-18.14.2.tgz#c076ed1d7b6095078ad3cf21dfeea951842778b1"
   integrity sha512-1uEQxww3DaghA0RxqHx0O0ppVlo43pJhepY51OxuQIKHpjbnYLA7vcdwioNPzIqmC2u3I/dmylcqjlh0e7AyUA==
+
+"@types/node@>=13.7.0":
+  version "18.14.4"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.14.4.tgz#0e64ec0b35a772e1e3d849f9a0ff61782d0cb647"
+  integrity sha512-VhCw7I7qO2X49+jaKcAUwi3rR+hbxT5VcYF493+Z5kMLI0DL568b7JI4IDJaxWFH0D/xwmGJNoXisyX+w7GH/g==
 
 "@types/node@^12.20.21":
   version "12.20.55"

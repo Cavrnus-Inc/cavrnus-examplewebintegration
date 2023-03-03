@@ -37,24 +37,40 @@
 		</q-step>	
 		<q-step :name="2" title="Stream the Room" :done="step > 2">
 			<h4>{{room?.name}}</h4>
-			<q-div class="row full-width full-height">
-				<q-div class="col-6 primary">
-					Streaming location
-				</q-div>
-				<q-div class="secondary column">
+			<div class="row full-width full-height">
+				<div class="col-4 primary">
+					Streaming Section
+				</div>
+				<div class="secondary col-8 column">
 					Communications Section
 					<q-space/>
-					<q-div class="col-6">
-						<q-list class="column">
+					<div class="row">
+						<q-list class="col-6 column">
 							<q-card v-for="user in users" :key="user.connectionId" class="hoverable q-ma-sm">
 								<q-card-section class="q-pa-none q-px-sm q-pt-xs secondary">
 									{{C.Conn.userProfileDisplayName(user.userProfile.get())}}
 								</q-card-section>
 							</q-card>
 						</q-list>
-					</q-div>
-				</q-div>
-			</q-div>
+						<div class="col-6 column">
+							<div class="row-4 q-my-lg">
+								<div>Property Name to view and alter: </div>
+								<q-input type="text" v-model="propertyName" class="primary"/>
+								<q-btn type="submit" @click="hookPropertyValue">Set Watched Property</q-btn>
+							</div>
+							<div class="row-4 q-my-lg">
+								<div>Current Value of {{ propertyName }}:</div>
+								<div>{{ livePropertyValue }}</div>
+							</div>
+							<div class="row-4 q-my-lg">
+								<div>Assign value of {{ propertyName }}</div>
+								<q-input type="text" v-model="assignPropertyValue"/>
+								<q-btn type="submit" @click="writePropertyValue(assignPropertyValue)">Update Property Value</q-btn>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 			<q-stepper-navigation>
 				<q-btn @click="leaveRoom()" color="secondary" label="Back" /> 
 			</q-stepper-navigation>
@@ -72,9 +88,9 @@ import * as C from '@cavrnus/lib';
 const step = ref<number>(0);
 
 // Log-in information
-const domain = ref<string>("cav.dev.cavrn.us");
-const username = ref<string>("");
-const passwd = ref<string>("");
+const domain = ref<string>("unittest.dev.cavrn.us");
+const username = ref<string>("testuser@example.com");
+const passwd = ref<string>("testuser");
 
 // Authorized/logged in api object.
 let api : C.Api.CavrnusApiUser|undefined = undefined;
@@ -87,6 +103,10 @@ let room = ref<C.Api.Room|undefined>(undefined);
 let conn : C.Conn.SessionConnection|undefined = undefined;
 let users = ref<C.Conn.SessionUser[]>([]);
 let usershook : C.V.Offable | undefined = undefined;
+
+let propertyName = ref<string>("/room/testproperty");
+let livePropertyValue = ref<string>("");
+let assignPropertyValue = ref<string>("");
 
 // Step 0->1, logging in.
 async function login()
@@ -146,6 +166,8 @@ async function selectRoom(joinroom: C.Api.Room)
 
 		usershook = C.V.mapintoarray(conn.users.users, users.value, (u1, u2)=>u1.connectionId > u2.connectionId ? 1 : -1);
 
+		hookPropertyValue();
+
 		step.value = 2;
 	}
 	catch (e)
@@ -154,10 +176,69 @@ async function selectRoom(joinroom: C.Api.Room)
 	}
 }
 
+let propertyHook : C.V.Offable|undefined = undefined;
+
+function hookPropertyValue()
+{
+	if (propertyHook)
+		propertyHook.off();
+	propertyHook = undefined;
+
+	if (conn === undefined)
+		return;
+
+	console.log(`Declaring and hooking prop: ${propertyName.value}...`);
+
+	// We're going to declare the property in teh room journal to make it visible to other client UIs here. This is optional
+	conn.sendOp({declareProperty:{
+		v1:{
+			propId: {id: propertyName.value},
+			decl: {
+				string:{
+					default: 'unset',
+					meta: {
+						base: {
+							name: `${propertyName.value} - ExampleWebIntegration`,
+							description: 'Property used for communicating with the example web integration',
+							category: 'testing',
+							categoryOrder: -100
+						}
+					}
+				}
+			}
+		}
+	}});
+
+	propertyHook = C.V.bind(conn.journal.properties.searchForStringProperty(propertyName.value).current,
+		(v)=>livePropertyValue.value = v);
+}
+
+function writePropertyValue(setTo : string) : void
+{
+	if (conn === undefined)
+		return;
+
+	conn.sendOp({
+		updatePropertyValue: {
+			v1: {
+				string: {
+					assignmentId: "-", priority: 0,
+					value: { constant: setTo }
+				},
+				propId: { id: propertyName.value },
+			}
+		}
+	});
+}
+
 async function leaveRoom()
 {
 	try
 	{
+		if (propertyHook)
+			propertyHook.off();
+		propertyHook = undefined;
+
 		room.value = undefined;
 
 		if (usershook !== undefined)
