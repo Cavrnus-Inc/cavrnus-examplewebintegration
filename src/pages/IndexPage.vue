@@ -97,9 +97,9 @@ $q.dark.set(true);
 const step = ref<number>(0);
 
 // Log-in information
-const domain = ref<string>("unittest.dev.cavrn.us");
-const username = ref<string>("testuser@example.com");
-const passwd = ref<string>("testuser");
+const domain = ref<string>("yourdomainhere.cavrn.us");
+const username = ref<string>("");
+const passwd = ref<string>("");
 
 // Authorized/logged in api object.
 let api : C.Api.CavrnusApiUser|undefined = undefined;
