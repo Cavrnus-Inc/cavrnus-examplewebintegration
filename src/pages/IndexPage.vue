@@ -39,7 +39,10 @@
 			<h4>{{room?.name}}</h4>
 			<div class="row full-width full-height">
 				<div class="col-4 primary">
-					Streaming Section
+					<div>Streaming Section</div>
+					<q-btn @click="beginStreaming()" :disable="streamclientActive">Request Stream</q-btn>
+					<div>{{ streamclientQueued ? `Queued: Position ${streamclientPosition}` : '' }}</div>
+					<streamframe ref="streamframeinst" style="min-width: 400px; min-height: 300px; background: #200;"></streamframe>
 				</div>
 				<div class="secondary col-8 column">
 					Communications Section
@@ -81,8 +84,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, getCurrentInstance } from 'vue';
+import { useQuasar } from 'quasar'
 import * as C from '@cavrnus/lib';
+import streamframe from '../components/streamframe.vue'
+
+const $q = useQuasar();
+$q.dark.set(true);
 
 // 'Wizard' step sequence/ UI integration
 const step = ref<number>(0);
@@ -107,6 +115,12 @@ let usershook : C.V.Offable | undefined = undefined;
 let propertyName = ref<string>("/room/testproperty");
 let livePropertyValue = ref<string>("");
 let assignPropertyValue = ref<string>("");
+
+let streamclientActive = ref<boolean>(false);
+let streamclientQueued = ref<boolean>(false);
+let streamclientPosition = ref<number>(-1);
+
+let streamframeinst = ref<InstanceType<typeof streamframe> | null>(null);
 
 // Step 0->1, logging in.
 async function login()
@@ -176,6 +190,45 @@ async function selectRoom(joinroom: C.Api.Room)
 	}
 }
 
+async function beginStreaming()
+{
+	if (api === undefined || !room.value?._id)
+		return;
+	if (streamclientActive.value)
+		return;
+
+	streamclientActive.value = true;
+
+	let streamres = await C.Api.streamClientCreateSession(api, {roomId:room.value._id});
+
+	if (streamres.session!.status === 'queued') // queued, update ui fields and async-spin until not queued.
+	{
+		console.log("Streamclient - queued.")
+
+		streamclientQueued.value = true;
+		streamclientPosition.value = streamres.position!;
+
+		while (streamres.session!.status === 'queued')
+		{
+			await new Promise((resolve)=> { setTimeout(resolve, 5000); });
+
+			console.log("Streamclient - queue status ping.")
+			streamres = await C.Api.streamClientPingSession(api, {sessionId:streamres.session!.id});
+	
+			streamclientPosition.value = streamres.position!;
+		}
+	}
+
+	// No longer queued
+	if (streamres.session!.status === 'pending') // ready to join!
+	{
+		console.log("Streamclient - pending. Initting app stream frame.");
+
+		const sfi = streamframeinst.value;
+		sfi?.startAppStream(streamres.streamUrl, domain.value);
+	}
+}
+
 let propertyHook : C.V.Offable|undefined = undefined;
 
 function hookPropertyValue()
@@ -189,7 +242,7 @@ function hookPropertyValue()
 
 	console.log(`Declaring and hooking prop: ${propertyName.value}...`);
 
-	// We're going to declare the property in teh room journal to make it visible to other client UIs here. This is optional
+	// We're going to declare the property in the room journal to make it visible to other client UIs here. This is optional
 	conn.sendOp({declareProperty:{
 		v1:{
 			propId: {id: propertyName.value},
