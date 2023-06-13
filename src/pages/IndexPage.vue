@@ -237,7 +237,7 @@ function hookPropertyValue()
 	console.log(`Declaring and hooking prop: ${propertyName.value}...`);
 
 	// We're going to declare the property in the room journal to make it visible to other client UIs. This is entirely optional.
-	conn.sendOp({declareProperty:{
+	 /*conn.sendOp({declareProperty:{
 		v1:{
 			propId: {id: propertyName.value},
 			decl: {
@@ -254,14 +254,19 @@ function hookPropertyValue()
 				}
 			}
 		}
-	}});
+	}});*/
 
 	// And here we bind the value of the property to the component field 'livePropertyValue'.
 	// Get the property by type and name, then bind it to a function which assigns the livePropertyValue.value.
 	// And lastly retain the hook so we can cancel this mapping later, either when shutting down or changing properties to watch.
 
+	debugger;
 	propertyHook = C.V.bind(conn.journal.properties.searchForStringProperty(propertyName.value).current,
-		(v)=>livePropertyValue.value = v);
+		(v)=>{
+			console.log(v);
+			debugger;
+			livePropertyValue.value = v;
+		});
 }
 
 function writePropertyValue(setTo : string) : void
