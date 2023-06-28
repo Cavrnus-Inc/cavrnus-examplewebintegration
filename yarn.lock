@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@babel/parser/-/parser-7.21.2.tgz#dacafadfc6d7654c3051a66d6fe55b6cb2f2a0b3"
   integrity sha512-URpaIJQwEkEC2T9Kn+Ai6Xe/02iNaVCuT/PtoRz3GPVJVDpPd7mLo+VddTbhCRU9TXqW5mSrQfXZyi8kDKOVpQ==
 
-"@cavrnus/lib@^0.3.25":
-  version "0.3.25"
-  resolved "https://registry.yarnpkg.com/@cavrnus/lib/-/lib-0.3.25.tgz#3ca958b4780e2eec33b2c05b1ae2c11eb56d9a1c"
-  integrity sha512-lAKOt2ohWo3V2Ly7R5Erv9wuFToRn87BHq9VJU6a/xkVeRu/5mD+YOVvsk75G1fqm89/wyRCLgMi3wQrJrLDLw==
+"@cavrnus/lib@^0.3.53":
+  version "0.3.53"
+  resolved "https://registry.yarnpkg.com/@cavrnus/lib/-/lib-0.3.53.tgz#686627d9ed90fe7abb3f802edae7ad0215384b18"
+  integrity sha512-V5LScuDfo3c+5BulhYgRqpi5fQ7TIXfuSzofCcNY5CuYvpkoF5g7w6FJGue7mZYsofRYcY7xIXrgNsn6f3RZeA==
   dependencies:
     axios "^0.25.0"
     evp_bytestokey "^1.0.3"

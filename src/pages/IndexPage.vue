@@ -27,22 +27,24 @@
 							</div>
 						</q-card-section>
 					</q-card>
-				</q-btn> 
-			</q-list>	
+				</q-btn>
+			</q-list>
 			<q-stepper-navigation>
-				<q-btn @click="step = 0" color="secondary" label="Back" /> 
+				<q-btn @click="step = 0" color="secondary" label="Back" />
 				<span class="q-mx-sm"></span>
 				<q-btn @click="step = 2" color="primary" label="Select" />
 			</q-stepper-navigation>
-		</q-step>	
+		</q-step>
 		<q-step :name="2" title="Stream the Room" :done="step > 2">
 			<h4>{{room?.name}}</h4>
 			<div class="row full-width full-height">
 				<div class="col-4 primary">
-					<div>Streaming Section</div>
-					<q-btn @click="beginStreaming()" :disable="streamclientActive">Request Stream</q-btn>
-					<div>{{ streamclientQueued ? `Queued: Position ${streamclientPosition}` : '' }}</div>
-					<streamframe ref="streamframeinst" style="min-width: 400px; min-height: 300px; background: #200;"></streamframe>
+				    <div>Streaming Section</div>
+				    <q-btn @click="beginStreaming('aws-appstream')" :disable="streamclientActive || pixelstreamClientActive">Join AppStream</q-btn>
+            <q-btn @click="beginStreaming('pixelstream')" :disable="streamclientActive || pixelstreamClientActive">Join PixelStream</q-btn>
+				    <div>{{ streamclientQueued && streamclientPosition ? `Queued: Position ${streamclientPosition}` : '' }}</div>
+				    <streamframe v-if="streamclientActive" ref="streamframeinst" style="min-width: 400px; min-height: 300px; background: #200;"></streamframe>
+            <iframe v-if="pixelstreamClientActive" id="pixelstreamframe" src="" width="400px" height="300px"></iframe>
 				</div>
 				<div class="secondary col-8 column">
 					Communications Section
@@ -75,9 +77,9 @@
 				</div>
 			</div>
 			<q-stepper-navigation>
-				<q-btn @click="leaveRoom()" color="secondary" label="Back" /> 
+				<q-btn @click="leaveRoom()" color="secondary" label="Back" />
 			</q-stepper-navigation>
-		</q-step>	
+		</q-step>
 
 	</q-stepper>
   </q-page>
@@ -97,7 +99,7 @@ $q.dark.set(true);
 const step = ref<number>(0);
 
 // Log-in information
-const domain = ref<string>("yourdomainhere.cavrn.us");
+const domain = ref<string>("localhost:4000");
 const username = ref<string>("");
 const passwd = ref<string>("");
 
@@ -118,6 +120,7 @@ let livePropertyValue = ref<string>("");
 let assignPropertyValue = ref<string>("");
 
 let streamclientActive = ref<boolean>(false);
+let pixelstreamClientActive = ref<boolean>(false);
 let streamclientQueued = ref<boolean>(false);
 let streamclientPosition = ref<number>(-1);
 
@@ -178,22 +181,33 @@ async function selectRoom(joinroom: C.Api.Room)
 	}
 }
 
-async function beginStreaming()
+async function beginStreaming(providerId: string)
 {
 	if (api === undefined || !room.value?._id)
 		return;
-	if (streamclientActive.value)
+	if (streamclientActive.value || pixelstreamClientActive.value)
 		return;
-
+	if (providerId === 'aws-appstream')
+		streamclientActive.value = true;
+	if (providerId === 'pixelstream')
+		pixelstreamClientActive.value = true;
 	// This method requests a streaming client from the Cavrnus server, waits and retries if it must wait in a queue,
-	// then when complete, calls into a sub-component (StreamFrame) to connect to the stream.
+	// then when complete, calls into a sub-component (StreamFrame) to connect to the stream
 	// This method currently has security limitations and will not work in this test until
 	// some AWS security settings have been changed.
 	// In short, this method is illustrative but likely to change.
 
-	streamclientActive.value = true;
-
-	let streamres = await C.Api.streamClientCreateSession(api, {roomId:room.value._id});
+	let streamres = await C.Api.streamClientCreateSession(
+    api,
+    {
+      roomId:room.value._id,
+      providerId,
+      customData: {
+        // any arbitrary data required by your application
+        userSessionId: (Math.random() + 1).toString(36).substring(7),
+      }
+    }
+  );
 
 	if (streamres.session!.status === 'queued') // queued, update ui fields and async-spin until not queued.
 	{
@@ -204,22 +218,35 @@ async function beginStreaming()
 
 		while (streamres.session!.status === 'queued')
 		{
-			await new Promise((resolve)=> { setTimeout(resolve, 5000); });
-
 			console.log("Streamclient - queue status ping.")
-			streamres = await C.Api.streamClientPingSession(api, {sessionId:streamres.session!.id});
-	
+			streamres = await C.Api.streamClientPingSession(api, {
+				sessionId: streamres.session!.id,
+			});
 			streamclientPosition.value = streamres.position!;
+
+			await new Promise((resolve)=> { setTimeout(resolve, 5000); });
 		}
 	}
 
 	// No longer queued
 	if (streamres.session!.status === 'pending') // ready to join!
 	{
-		console.log("Streamclient - pending. Initting app stream frame.");
+		if (['local', 'aws-appstream'].includes(providerId))
+		{
+			console.log("Streamclient - pending. Initting app stream frame.");
 
-		const sfi = streamframeinst.value;
-		sfi?.startAppStream(streamres.streamUrl!, domain.value);
+			const sfi = streamframeinst.value;
+			sfi?.startAppStream(streamres.streamUrl!, domain.value);
+		}
+		else if (providerId === 'pixelstream')
+		{
+			console.log("Pixelstreamclient - pending. Initializing frame.");
+
+			const iframe = document.getElementById('pixelstreamframe');
+			iframe?.setAttribute('src', streamres.streamUrl as string);
+		}
+		streamclientQueued.value = false;
+		streamclientPosition.value = -1;
 	}
 }
 
@@ -260,11 +287,11 @@ function hookPropertyValue()
 	// Get the property by type and name, then bind it to a function which assigns the livePropertyValue.value.
 	// And lastly retain the hook so we can cancel this mapping later, either when shutting down or changing properties to watch.
 
-	debugger;
+	// debugger;
 	propertyHook = C.V.bind(conn.journal.properties.searchForStringProperty(propertyName.value).current,
 		(v)=>{
 			console.log(v);
-			debugger;
+			// debugger;
 			livePropertyValue.value = v;
 		});
 }
