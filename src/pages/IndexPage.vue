@@ -40,9 +40,9 @@
 			<div class="row full-width full-height">
 				<div class="col-4 primary">
 				    <div>Streaming Section</div>
-				    <q-btn @click="beginStreaming('aws-appstream')" :disable="streamclientActive || pixelstreamClientActive">Join AppStream</q-btn>
+				    <q-btn @click="beginStreaming('appstream')" :disable="streamclientActive || pixelstreamClientActive">Join AppStream</q-btn>
             <q-btn @click="beginStreaming('pixelstream')" :disable="streamclientActive || pixelstreamClientActive">Join PixelStream</q-btn>
-				    <div>{{ streamclientQueued && streamclientPosition ? `Queued: Position ${streamclientPosition}` : '' }}</div>
+				    <div>{{ streamclientQueued ? `Queued: ${streamclientPosition ? 'Position ' + streamclientPosition : ''}` : ''}}</div>
 				    <streamframe v-if="streamclientActive" ref="streamframeinst" style="min-width: 400px; min-height: 300px; background: #200;"></streamframe>
             <iframe v-if="pixelstreamClientActive" id="pixelstreamframe" src="" width="400px" height="300px"></iframe>
 				</div>
@@ -187,7 +187,7 @@ async function beginStreaming(providerId: string)
 		return;
 	if (streamclientActive.value || pixelstreamClientActive.value)
 		return;
-	if (providerId === 'aws-appstream')
+	if (providerId === 'appstream')
 		streamclientActive.value = true;
 	if (providerId === 'pixelstream')
 		pixelstreamClientActive.value = true;
@@ -231,7 +231,7 @@ async function beginStreaming(providerId: string)
 	// No longer queued
 	if (streamres.session!.status === 'pending') // ready to join!
 	{
-		if (['local', 'aws-appstream'].includes(providerId))
+		if (['local', 'appstream'].includes(providerId))
 		{
 			console.log("Streamclient - pending. Initting app stream frame.");
 
